@@ -48,15 +48,22 @@ class ZhipuClient:
 
     @property
     def enabled(self) -> bool:
-        return bool(self.api_key or any(self.role_api_keys.values()))
+        if self.allow_cross_role_key_fallback:
+            return bool(self.api_key or any(self.role_api_keys.values()))
+        # Strict role-key mode: do not treat generic key as LLM-enabled for expert flows.
+        return bool(any(self.role_api_keys.values()))
 
     def _resolve_api_key(self, role: str | None = None, api_key: str | None = None) -> str:
         # Priority: explicit override > role-scoped key > default key.
+        # In strict mode (no cross-role fallback), role call does not fall back to default key.
         if api_key and str(api_key).strip():
             return str(api_key).strip()
-        role_key = self.role_api_keys.get(str(role or "").strip())
+        role_name = str(role or "").strip()
+        role_key = self.role_api_keys.get(role_name)
         if role_key:
             return role_key
+        if role_name and not self.allow_cross_role_key_fallback:
+            return ""
         return self.api_key
 
     def _candidate_api_keys(self, role: str | None = None, api_key: str | None = None) -> list[str]:
@@ -65,9 +72,11 @@ class ZhipuClient:
 
         Order:
         1) explicit api_key (if provided)
-        2) role-scoped key
-        3) default key
-        4) other role keys (optional, for 429 fallback)
+        2) if role is provided:
+           - strict mode: role-scoped key only
+           - fallback mode: role-scoped key -> default key -> other role keys
+        3) if role is not provided:
+           - default key, then role keys (fallback mode only)
         """
         explicit = str(api_key or "").strip()
         if explicit:
@@ -81,7 +90,19 @@ class ZhipuClient:
                 keys.append(token)
 
         role_name = str(role or "").strip()
-        push(self.role_api_keys.get(role_name))
+        if role_name:
+            # Strict routing: when role is provided, use only that role key.
+            if not self.allow_cross_role_key_fallback:
+                push(self.role_api_keys.get(role_name))
+                return keys
+
+            push(self.role_api_keys.get(role_name))
+            push(self.api_key)
+            for role_key in self.role_api_keys.values():
+                push(role_key)
+            return keys
+
+        # No role: keep generic behavior.
         push(self.api_key)
         if self.allow_cross_role_key_fallback:
             for role_key in self.role_api_keys.values():
