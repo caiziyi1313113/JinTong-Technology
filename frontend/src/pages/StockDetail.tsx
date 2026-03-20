@@ -564,32 +564,6 @@ export default function StockDetail() {
       })
       .filter(Boolean) as Array<{ title: string; points: string[] }>
   }, [researchReport])
-  const reportExpertMatrix = useMemo(() => {
-    if (!researchReport) return []
-    const raw = Array.isArray(researchReport.expert_matrix) ? researchReport.expert_matrix : []
-    return raw
-      .map((item: any) => {
-        if (!item || typeof item !== 'object') return null
-        const expertName = String(item.expert_name || item.expert_key || '').trim()
-        const signalLabel = String(item.signal_label || '').trim()
-        const score = readNumber(item.score)
-        const confidence = readNumber(item.confidence)
-        const summary = String(item.summary || '').trim()
-        const keyPoints = normalizeTextArray(item.key_points, 3)
-        const risks = normalizeTextArray(item.risks, 2)
-        if (!expertName && !summary && keyPoints.length === 0 && risks.length === 0) return null
-        return { expertName, signalLabel, score, confidence, summary, keyPoints, risks }
-      })
-      .filter(Boolean) as Array<{
-      expertName: string
-      signalLabel: string
-      score: number | null
-      confidence: number | null
-      summary: string
-      keyPoints: string[]
-      risks: string[]
-    }>
-  }, [researchReport])
   const reportTitle = String(researchReport?.title || '').trim()
   const reportSubtitle = String(researchReport?.subtitle || '').trim()
   const reportSummary = String(researchReport?.summary || '').trim()
@@ -1399,32 +1373,6 @@ export default function StockDetail() {
                       )}
                     </div>
                   ))}
-                  {reportExpertMatrix.length > 0 && (
-                    <>
-                      <h4>专家观点矩阵</h4>
-                      <div className="list-stack">
-                        {reportExpertMatrix.map((row, idx) => (
-                          <article className="list-item" key={`report-expert-${idx}`}>
-                            <div className="list-content">
-                              <div className="row-title">
-                                {row.expertName || `专家${idx + 1}`}
-                                {row.signalLabel ? ` | ${row.signalLabel}` : ''}
-                                {row.score === null ? '' : ` | 评分 ${row.score.toFixed(2)}`}
-                                {row.confidence === null ? '' : ` | 置信度 ${row.confidence.toFixed(3)}`}
-                              </div>
-                              {row.summary && <div className="row-sub">{row.summary}</div>}
-                              {row.keyPoints.length > 0 && (
-                                <div className="row-sub">关键要点：{row.keyPoints.join('；')}</div>
-                              )}
-                              {row.risks.length > 0 && (
-                                <div className="row-sub">主要风险：{row.risks.join('；')}</div>
-                              )}
-                            </div>
-                          </article>
-                        ))}
-                      </div>
-                    </>
-                  )}
                   {reportDisclaimer && (
                     <>
                       <h4>免责声明</h4>

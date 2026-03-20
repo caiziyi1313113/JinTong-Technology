@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "change-me"
     access_token_expire_minutes: int = 60 * 24
     allowed_origins: str = "http://localhost:5173"
-    # zhipu api key
+    # zhipu api key (default read from this config file; env can still override)
     zhipu_api_key: str = "fa23effc7d4149afaa56b2db89327c1e.OgquEufbWCj4Ggze"
     zhipu_api_key_news: str = "a56116b4f49d42829588371a36e7dea7.96K7CzgFQwh3jJb5"
     zhipu_api_key_stock_data: str = "5159dd6c5415417683ad9931c4a0b23d.m9EERIbBaDErqiCV"
@@ -33,11 +33,11 @@ class Settings(BaseSettings):
     zhipu_max_tokens: int = 65536
     # LLM rate-limit and retry controls
     zhipu_retry_max_attempts: int = 3
-    zhipu_retry_base_delay_seconds: float = 1.2
-    zhipu_retry_max_delay_seconds: float = 8.0
-    zhipu_retry_jitter_seconds: float = 0.3
-    zhipu_rate_limit_interval_seconds: float = 1.0
-    zhipu_allow_cross_role_key_fallback: bool = True
+    zhipu_retry_base_delay_seconds: float = 2.5
+    zhipu_retry_max_delay_seconds: float = 20.0
+    zhipu_retry_jitter_seconds: float = 0.8
+    zhipu_rate_limit_interval_seconds: float = 2.0
+    zhipu_allow_cross_role_key_fallback: bool = False
     expert_parallel_workers: int = 5
 
     max_ranking_symbols: int = 60

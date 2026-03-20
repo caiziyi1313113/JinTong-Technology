@@ -66,11 +66,21 @@ JWT_SECRET=change-me
 ALLOWED_ORIGINS=http://localhost:5173
 
 # 启用智谱 LLM（zai-sdk）
-ZHIPU_API_KEY=your_key
+ZHIPU_API_KEY_NEWS=your_news_key
+ZHIPU_API_KEY_STOCK_DATA=your_stock_data_key
+ZHIPU_API_KEY_MACRO=your_macro_key
+ZHIPU_API_KEY_FINANCIAL=your_financial_key
+ZHIPU_API_KEY_FUNDAMENTAL=your_fundamental_key
+ZHIPU_API_KEY_INVESTMENT=your_investment_key
 ZHIPU_MODEL=glm-4.7-flash
 ZHIPU_THINKING_TYPE=enabled
 ZHIPU_MAX_TOKENS=65536
 LLM_TIMEOUT_SECONDS=45
+ZHIPU_ALLOW_CROSS_ROLE_KEY_FALLBACK=false
+ZHIPU_RATE_LIMIT_INTERVAL_SECONDS=2.0
+ZHIPU_RETRY_BASE_DELAY_SECONDS=2.5
+ZHIPU_RETRY_MAX_DELAY_SECONDS=20.0
+ZHIPU_RETRY_JITTER_SECONDS=0.8
 ```
 
 ### 3.3 智谱 SDK 验证（可选）
@@ -231,6 +241,6 @@ python backend/scripts/run_static_all_sz_main.py --refresh-universe --batch-size
 
 ## 8. 注意事项
 - 当前仅支持深圳主板 A 股；非目标市场代码会在同步与分析阶段被自动跳过或拒绝。
-- 如果本地没有配置 `ZHIPU_API_KEY`，系统自动使用规则专家 fallback，保证可运行。
+- 如果未配置对应角色的 `ZHIPU_API_KEY_*`，该角色会走规则专家 fallback，系统仍可运行。
 - 首次跑 A 股全量同步耗时较长，建议先用 `symbols` 小范围试跑。
 - 前端/后端需分别安装依赖；当前环境未安装 `npm` 或 Python 包时无法本地直接运行。
