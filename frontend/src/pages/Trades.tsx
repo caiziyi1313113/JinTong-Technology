@@ -32,7 +32,7 @@ type TradeSignal = {
 }
 
 export default function Trades() {
-  const [symbol, setSymbol] = useState('AAPL')
+  const [symbol, setSymbol] = useState('000001')
   const [plans, setPlans] = useState<TradePlan[]>([])
   const [signals, setSignals] = useState<TradeSignal[]>([])
   const [status, setStatus] = useState('')
@@ -65,7 +65,7 @@ export default function Trades() {
     setStatus('')
     try {
       await createTradePlan(symbol.toUpperCase())
-      setStatus('Trade plan created.')
+      setStatus('交易计划已生成。')
       await refreshAll()
     } catch (err: unknown) {
       setStatus((err as Error).message)
@@ -78,7 +78,7 @@ export default function Trades() {
       const raw = priceByPlan[planId]
       const currentPrice = raw ? Number(raw) : undefined
       await createTradeSignal({ trade_plan_id: planId, current_price: currentPrice })
-      setStatus('Trade signal created.')
+      setStatus('交易信号已生成。')
       await refreshAll()
     } catch (err: unknown) {
       setStatus((err as Error).message)
@@ -87,57 +87,57 @@ export default function Trades() {
 
   return (
     <div className="panel">
-      <h2>Trade Plans And Signals</h2>
+      <h2>交易计划与信号</h2>
       <form onSubmit={handleCreatePlan} className="form-row">
-        <input value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder="Stock symbol" />
-        <button className="primary" type="submit">Generate Plan</button>
+        <input value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder="股票代码" />
+        <button className="primary" type="submit">生成计划</button>
       </form>
       {status && <p className="status">{status}</p>}
 
-      <h3>Plans</h3>
+      <h3>计划列表</h3>
       <div className="grid">
         {plans.map((plan) => (
           <div className="card" key={plan.id}>
             <h4>{plan.stock_symbol} #{plan.id}</h4>
-            <p><strong>Side:</strong> {plan.side}</p>
-            <p><strong>Hold:</strong> {plan.hold_days}</p>
-            <p><strong>Shares:</strong> {plan.suggested_shares}</p>
-            <p><strong>Entry:</strong> {plan.entry_low ?? '-'} ~ {plan.entry_high ?? '-'}</p>
-            <p><strong>Stop/Take:</strong> {plan.stop_loss_price ?? '-'} / {plan.take_profit_price ?? '-'}</p>
-            <p><strong>Trailing:</strong> {plan.trailing_stop_pct ?? '-'}</p>
+            <p><strong>方向：</strong> {plan.side}</p>
+            <p><strong>持有周期：</strong> {plan.hold_days}</p>
+            <p><strong>股数：</strong> {plan.suggested_shares}</p>
+            <p><strong>入场：</strong> {plan.entry_low ?? '-'} ~ {plan.entry_high ?? '-'}</p>
+            <p><strong>止损/止盈：</strong> {plan.stop_loss_price ?? '-'} / {plan.take_profit_price ?? '-'}</p>
+            <p><strong>移动止损：</strong> {plan.trailing_stop_pct ?? '-'}</p>
             {plan.ladder_prices?.length > 0 && (
-              <p><strong>Ladder:</strong> {plan.ladder_prices.join(', ')}</p>
+              <p><strong>分批：</strong> {plan.ladder_prices.join(', ')}</p>
             )}
             <div className="form-row compact">
               <input
                 type="number"
                 step="0.01"
-                placeholder="Current price (optional)"
+                placeholder="当前价格（可选）"
                 value={priceByPlan[plan.id] || ''}
                 onChange={(e) => setPriceByPlan({ ...priceByPlan, [plan.id]: e.target.value })}
               />
               <button className="primary ghost" type="button" onClick={() => handleCreateSignal(plan.id)}>
-                Generate Signal
+                生成信号
               </button>
             </div>
           </div>
         ))}
-        {plans.length === 0 && <div className="card">No plans yet.</div>}
+        {plans.length === 0 && <div className="card">暂无计划。</div>}
       </div>
 
-      <h3>Signals</h3>
+      <h3>信号列表</h3>
       <div className="table-wrap">
         <table className="data-table">
           <thead>
             <tr>
-              <th>Time</th>
-              <th>Symbol</th>
-              <th>Side</th>
-              <th>Type</th>
-              <th>Trigger</th>
-              <th>Shares</th>
-              <th>Conf</th>
-              <th>Reason</th>
+              <th>时间</th>
+              <th>代码</th>
+              <th>方向</th>
+              <th>类型</th>
+              <th>触发价</th>
+              <th>股数</th>
+              <th>置信度</th>
+              <th>原因</th>
             </tr>
           </thead>
           <tbody>
@@ -155,7 +155,7 @@ export default function Trades() {
             ))}
             {signals.length === 0 && (
               <tr>
-                <td colSpan={8}>No signals yet.</td>
+                <td colSpan={8}>暂无信号。</td>
               </tr>
             )}
           </tbody>

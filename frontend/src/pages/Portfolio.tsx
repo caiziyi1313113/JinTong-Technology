@@ -12,10 +12,17 @@ type Position = {
   closed_at?: string | null
 }
 
+function positionStatusLabel(status: string) {
+  const normalized = String(status || '').trim().toLowerCase()
+  if (normalized === 'open') return '持仓中'
+  if (normalized === 'closed') return '已平仓'
+  return status || '-'
+}
+
 export default function Portfolio() {
   const [positions, setPositions] = useState<Position[]>([])
   const [includeClosed, setIncludeClosed] = useState(false)
-  const [symbol, setSymbol] = useState('AAPL')
+  const [symbol, setSymbol] = useState('000001')
   const [quantity, setQuantity] = useState(10)
   const [avgPrice, setAvgPrice] = useState(100)
   const [status, setStatus] = useState('')
@@ -43,7 +50,7 @@ export default function Portfolio() {
         quantity: Number(quantity),
         avg_price: Number(avgPrice),
       })
-      setStatus('Position updated.')
+      setStatus('持仓已更新。')
       await loadPositions()
     } catch (err: unknown) {
       setStatus((err as Error).message)
@@ -56,7 +63,7 @@ export default function Portfolio() {
       const raw = closeQtyMap[positionId]
       const qty = !closeAll && raw ? Number(raw) : undefined
       await closePosition(positionId, qty)
-      setStatus(closeAll ? 'Position closed.' : 'Position reduced.')
+      setStatus(closeAll ? '持仓已全部平仓。' : '持仓已减仓。')
       await loadPositions()
     } catch (err: unknown) {
       setStatus((err as Error).message)
@@ -65,16 +72,16 @@ export default function Portfolio() {
 
   return (
     <div className="panel">
-      <h2>Portfolio</h2>
+      <h2>持仓管理</h2>
       <form onSubmit={handleAdd} className="form-row">
-        <input value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder="Symbol" />
+        <input value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} placeholder="股票代码" />
         <input
           type="number"
           min={1}
           step="1"
           value={quantity}
           onChange={(e) => setQuantity(Number(e.target.value))}
-          placeholder="Qty"
+          placeholder="数量"
         />
         <input
           type="number"
@@ -82,9 +89,9 @@ export default function Portfolio() {
           step="0.01"
           value={avgPrice}
           onChange={(e) => setAvgPrice(Number(e.target.value))}
-          placeholder="Avg Price"
+          placeholder="均价"
         />
-        <button className="primary" type="submit">Add / Increase</button>
+        <button className="primary" type="submit">新增/加仓</button>
       </form>
 
       <label className="checkbox-row">
@@ -93,7 +100,7 @@ export default function Portfolio() {
           checked={includeClosed}
           onChange={(e) => setIncludeClosed(e.target.checked)}
         />
-        Include closed positions
+        显示已平仓记录
       </label>
 
       {status && <p className="status">{status}</p>}
@@ -102,13 +109,13 @@ export default function Portfolio() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Symbol</th>
-              <th>Qty</th>
-              <th>Avg Price</th>
-              <th>Status</th>
-              <th>Updated</th>
-              <th>Close Qty</th>
-              <th>Actions</th>
+              <th>股票代码</th>
+              <th>数量</th>
+              <th>均价</th>
+              <th>状态</th>
+              <th>更新时间</th>
+              <th>平仓数量</th>
+              <th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -117,13 +124,13 @@ export default function Portfolio() {
                 <td>{pos.stock_symbol}</td>
                 <td>{pos.quantity.toFixed(2)}</td>
                 <td>{pos.avg_price.toFixed(2)}</td>
-                <td>{pos.status}</td>
+                <td>{positionStatusLabel(pos.status)}</td>
                 <td>{new Date(pos.updated_at).toLocaleString()}</td>
                 <td>
                   <input
                     disabled={pos.status !== 'open'}
                     className="small-input"
-                    placeholder="Partial qty"
+                    placeholder="输入减仓数量"
                     value={closeQtyMap[pos.id] || ''}
                     onChange={(e) => setCloseQtyMap({ ...closeQtyMap, [pos.id]: e.target.value })}
                   />
@@ -136,7 +143,7 @@ export default function Portfolio() {
                       onClick={() => handleClose(pos.id, false)}
                       type="button"
                     >
-                      Reduce
+                      减仓
                     </button>
                     <button
                       className="primary danger"
@@ -144,7 +151,7 @@ export default function Portfolio() {
                       onClick={() => handleClose(pos.id, true)}
                       type="button"
                     >
-                      Close All
+                      全部平仓
                     </button>
                   </div>
                 </td>
@@ -152,7 +159,7 @@ export default function Portfolio() {
             ))}
             {positions.length === 0 && (
               <tr>
-                <td colSpan={7}>No positions yet.</td>
+                <td colSpan={7}>暂无持仓。</td>
               </tr>
             )}
           </tbody>

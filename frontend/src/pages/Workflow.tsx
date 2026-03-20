@@ -51,7 +51,7 @@ export default function Workflow() {
       const res = await runPostCloseReview({ trade_date: tradeDate, top_n: topN })
       setRecap(res.recap as Recap)
       setCandidates((res.candidates || []) as Candidate[])
-      setStatus('Post-close review generated.')
+      setStatus('收盘复盘已生成。')
     } catch (err: unknown) {
       setStatus((err as Error).message)
     } finally {
@@ -65,7 +65,7 @@ export default function Workflow() {
     try {
       const rows = await runPreOpenScan({ scan_date: tradeDate, top_n: topN })
       setScanRows((rows || []) as ScanResult[])
-      setStatus('Pre-open scan generated.')
+      setStatus('开盘前扫描已生成。')
     } catch (err: unknown) {
       setStatus((err as Error).message)
     } finally {
@@ -75,14 +75,14 @@ export default function Workflow() {
 
   return (
     <div className="panel">
-      <h2>Daily Workflow</h2>
+      <h2>每日流程</h2>
       <div className="form-grid">
         <label>
-          Trade Date
+          交易日期
           <input type="date" value={tradeDate} onChange={(e) => setTradeDate(e.target.value)} />
         </label>
         <label>
-          Top N
+          前N
           <input
             type="number"
             min={1}
@@ -94,17 +94,17 @@ export default function Workflow() {
       </div>
       <div className="actions-row">
         <button className="primary" disabled={loading} onClick={handlePostClose}>
-          Run Post-Close Review
+          运行收盘复盘
         </button>
         <button className="primary ghost" disabled={loading} onClick={handlePreOpen}>
-          Run Pre-Open Scan
+          运行开盘前扫描
         </button>
       </div>
       {status && <p className="status">{status}</p>}
 
       {hasReview && recap && (
         <div className="card section-card">
-          <h3>Recap</h3>
+          <h3>复盘摘要</h3>
           <p>{recap.market_summary}</p>
           <p>{recap.macro_summary}</p>
         </div>
@@ -112,16 +112,16 @@ export default function Workflow() {
 
       {candidates.length > 0 && (
         <div className="section-card">
-          <h3>Candidate Pool</h3>
+          <h3>候选池</h3>
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Symbol</th>
-                  <th>Total</th>
-                  <th>Sentiment</th>
-                  <th>Data</th>
-                  <th>Reasons</th>
+                  <th>代码</th>
+                  <th>总分</th>
+                  <th>情绪分</th>
+                  <th>数据分</th>
+                  <th>原因</th>
                 </tr>
               </thead>
               <tbody>
@@ -142,16 +142,16 @@ export default function Workflow() {
 
       {scanRows.length > 0 && (
         <div className="section-card">
-          <h3>Pre-Open Top Picks</h3>
+          <h3>开盘前推荐前N</h3>
           <div className="table-wrap">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Rank</th>
-                  <th>Symbol</th>
-                  <th>Score</th>
-                  <th>Action</th>
-                  <th>Alignment</th>
+                  <th>排名</th>
+                  <th>代码</th>
+                  <th>评分</th>
+                  <th>动作</th>
+                  <th>一致性</th>
                 </tr>
               </thead>
               <tbody>

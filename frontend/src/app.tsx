@@ -5,7 +5,10 @@ import { clearSession, getCurrentUser, getToken, setUserId } from './api'
 import Discover from './pages/Discover'
 import Home from './pages/Home'
 import Login from './pages/Login'
+import MacroStandalone from './pages/MacroStandalone'
+import Profile from './pages/Profile'
 import QueryStocks from './pages/QueryStocks'
+import StockDetail from './pages/StockDetail'
 import TrackStocks from './pages/TrackStocks'
 
 export default function App() {
@@ -42,7 +45,9 @@ export default function App() {
     if (!authenticated) {
       return false
     }
-    return ['/discover', '/track', '/query'].some((path) => location.pathname.startsWith(path))
+    return ['/discover', '/track', '/query', '/stock', '/profile', '/macro'].some((path) =>
+      location.pathname.startsWith(path)
+    )
   }, [authenticated, location.pathname])
 
   function handleLoginSuccess(userId: string) {
@@ -54,11 +59,11 @@ export default function App() {
   function handleLogout() {
     clearSession()
     setAuthenticated(false)
-    setStatus('Logged out.')
+    setStatus('已退出登录')
   }
 
   if (!ready) {
-    return <div className="boot-screen">Initializing session...</div>
+    return <div className="boot-screen">正在初始化会话...</div>
   }
 
   return (
@@ -91,6 +96,18 @@ export default function App() {
           <Route
             path="/query"
             element={authenticated ? <QueryStocks /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/macro"
+            element={authenticated ? <MacroStandalone /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/profile"
+            element={authenticated ? <Profile /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/stock/:symbol"
+            element={authenticated ? <StockDetail /> : <Navigate to="/login" replace />}
           />
 
           <Route path="*" element={<Navigate to="/home" replace />} />
