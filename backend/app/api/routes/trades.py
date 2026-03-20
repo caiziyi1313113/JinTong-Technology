@@ -1,13 +1,17 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.db import get_db
+from app.core.market_scope import is_target_symbol, normalize_symbol
 from app.models.stock import Stock
 from app.models.trade_plan import TradePlan
 from app.models.trade_signal import TradeSignal
 from app.models.user import User
 from app.schemas.trade import TradePlanCreate, TradePlanOut, TradeSignalCreate, TradeSignalOut
+from app.services.data_ingest import akshare_service
 from app.services.trades.planner import create_trade_plan, create_trade_signal
 
 router = APIRouter(prefix="/trades", tags=["trades"])
@@ -71,6 +75,23 @@ def generate_trade_plan(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> TradePlanOut:
+    code = normalize_symbol(payload.stock_symbol)
+    if not is_target_symbol(code):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only Shenzhen main-board A shares are supported",
+        )
+    try:
+        akshare_service.sync_symbol_hot_data(
+            db,
+            symbol=code,
+            as_of_date=date.today(),
+            history_days=120,
+            force=False,
+        )
+    except Exception:
+        # Allow plan generation with existing cached data if refresh fails.
+        pass
     plan, _fused = create_trade_plan(db, current_user, payload.stock_symbol)
     stock = db.get(Stock, plan.stock_id)
     return _plan_to_out(plan, stock.symbol if stock else payload.stock_symbol.upper())

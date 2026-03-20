@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class DocumentCreate(BaseModel):
+    stock_id: Optional[int] = None
     stock_symbol: Optional[str] = None
     doc_type: str
     title: str
@@ -15,6 +16,7 @@ class DocumentCreate(BaseModel):
 
 class DocumentOut(BaseModel):
     id: int
+    stock_id: Optional[int]
     stock_symbol: Optional[str]
     doc_type: str
     title: str

@@ -24,3 +24,24 @@ class AnalysisOut(BaseModel):
     expert_signals: List[ExpertSignalOut]
 
     model_config = {"from_attributes": True}
+
+
+class AnalysisTaskOut(BaseModel):
+    task_id: str
+    stock_symbol: str
+    status: str
+    current_step: int
+    total_steps: int
+    queue_position: int | None = None
+    stage: str
+    message: str | None = None
+    error: str | None = None
+    analysis_id: int | None = None
+    result: Dict[str, Any] | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class MacroStandaloneOut(BaseModel):
+    generated_at: datetime
+    report: Dict[str, Any]

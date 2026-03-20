@@ -7,6 +7,7 @@ class ExpertSignalOut(BaseModel):
     signal: str
     score: float
     confidence: float
+    fallback: bool = False
     horizon: str
     key_factors: List[str]
     risk_flags: List[str]

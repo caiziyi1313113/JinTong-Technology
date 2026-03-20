@@ -3,6 +3,7 @@ from statistics import mean, pstdev
 
 from sqlalchemy.orm import Session
 
+from app.core.market_scope import TARGET_MARKET
 from app.models.candidate_pool import CandidatePool
 from app.models.daily_recap import DailyRecap
 from app.models.document import Document
@@ -94,7 +95,7 @@ def generate_post_close_review(db: Session, trade_date: date, top_n: int = 20) -
     db.query(DailyRecap).filter(DailyRecap.trade_date == trade_date).delete(synchronize_session=False)
 
     macro_score = _macro_sentiment(db)
-    stocks = db.query(Stock).order_by(Stock.symbol).all()
+    stocks = db.query(Stock).filter(Stock.market == TARGET_MARKET).order_by(Stock.symbol).all()
     candidates_payload = []
     movers = []
 

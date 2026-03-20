@@ -1,2 +1,11 @@
 node_modules/
 frontend/node_modules/
+# .gitignore 建议至少包含
+__pycache__/
+*.pyc
+.venv/
+backend/.venv/
+frontend/node_modules/
+backend/models/
+*.log
+.env

@@ -546,6 +546,54 @@ export default function StockDetail() {
     if (!raw || typeof raw !== 'object') return null
     return raw as Record<string, any>
   }, [investmentPayload?.explanation_panel])
+  const researchReport = useMemo(() => {
+    const raw = investmentPayload?.research_report
+    if (!raw || typeof raw !== 'object') return null
+    return raw as Record<string, any>
+  }, [investmentPayload?.research_report])
+  const reportSections = useMemo(() => {
+    if (!researchReport) return []
+    const raw = Array.isArray(researchReport.sections) ? researchReport.sections : []
+    return raw
+      .map((item: any) => {
+        if (!item || typeof item !== 'object') return null
+        const title = String(item.title || '').trim()
+        const points = normalizeTextArray(item.points, 10)
+        if (!title && points.length === 0) return null
+        return { title, points }
+      })
+      .filter(Boolean) as Array<{ title: string; points: string[] }>
+  }, [researchReport])
+  const reportExpertMatrix = useMemo(() => {
+    if (!researchReport) return []
+    const raw = Array.isArray(researchReport.expert_matrix) ? researchReport.expert_matrix : []
+    return raw
+      .map((item: any) => {
+        if (!item || typeof item !== 'object') return null
+        const expertName = String(item.expert_name || item.expert_key || '').trim()
+        const signalLabel = String(item.signal_label || '').trim()
+        const score = readNumber(item.score)
+        const confidence = readNumber(item.confidence)
+        const summary = String(item.summary || '').trim()
+        const keyPoints = normalizeTextArray(item.key_points, 3)
+        const risks = normalizeTextArray(item.risks, 2)
+        if (!expertName && !summary && keyPoints.length === 0 && risks.length === 0) return null
+        return { expertName, signalLabel, score, confidence, summary, keyPoints, risks }
+      })
+      .filter(Boolean) as Array<{
+      expertName: string
+      signalLabel: string
+      score: number | null
+      confidence: number | null
+      summary: string
+      keyPoints: string[]
+      risks: string[]
+    }>
+  }, [researchReport])
+  const reportTitle = String(researchReport?.title || '').trim()
+  const reportSubtitle = String(researchReport?.subtitle || '').trim()
+  const reportSummary = String(researchReport?.summary || '').trim()
+  const reportDisclaimer = String(researchReport?.disclaimer || '').trim()
   const hasAnalysisPayload = Boolean(analysisResult || rankingItem)
   const scoreBreakdown =
     (aggregatePayload?.score_breakdown && typeof aggregatePayload.score_breakdown === 'object'
@@ -1066,7 +1114,7 @@ export default function StockDetail() {
               <div className="metric-box"><span>样本数</span><strong>{latestSentiment.news_count + latestSentiment.guba_count}</strong></div>
               <div className="metric-box"><span>趋势信号</span><strong>{latestSentiment.trend_signal}</strong></div>
               <div className="metric-box"><span>5日趋势</span><strong>{latestSentiment.trend_5d === null || latestSentiment.trend_5d === undefined ? '-' : latestSentiment.trend_5d.toFixed(3)}</strong></div>
-              <div className="metric-box"><span>可靠性</span><strong>{latestSentiment.reliability_level}</strong></div>
+              <div className="metric-box"><span>可靠性(一致率)</span><strong>{latestSentiment.reliability_level}</strong></div>
             </div>
 
             <div className="trade-panel">
@@ -1075,7 +1123,7 @@ export default function StockDetail() {
               <p>估值水平：{latestSentiment.valuation_level}</p>
               <p>估值依据：{latestSentiment.valuation_reason || '-'}</p>
               <p>
-                情绪-价格相关性：
+                情绪-价格同日信号相关性：
                 {latestSentiment.corr_with_next_return === null || latestSentiment.corr_with_next_return === undefined
                   ? ' -'
                   : ` ${latestSentiment.corr_with_next_return.toFixed(3)}\uFF08${latestSentiment.corr_sample_size} \u4E2A\u6837\u672C\uFF09`}
@@ -1090,7 +1138,8 @@ export default function StockDetail() {
               <p>总结：{latestSentiment.strategy_summary || '-'}</p>
               <p>指标解释：趋势信号表示近几日情绪方向，常见值为 up/down/none（上行/下行/无明显趋势）。</p>
               <p>指标解释：5日趋势 = 近5个交易日综合情绪分变化值；大于0通常代表情绪回暖，小于0通常代表情绪走弱，绝对值越大波动越明显。</p>
-              <p>指标解释：可靠性基于样本量与历史情绪-价格关系稳定度给出，仅用于辅助判断，不代表确定性预测。</p>
+              <p>指标解释：该相关性把情绪离散为“积极/中立/消极”，把价格离散为“涨/平/跌”（当日收盘相对前一日，阈值±0.01%），再计算两组信号的相关系数。</p>
+              <p>指标解释：可靠性(一致率)=情绪信号与价格信号同向的样本占比，显示为百分比。</p>
             </div>
 
             <div className="trade-panel">
@@ -1328,62 +1377,120 @@ export default function StockDetail() {
 
             <div className="trade-panel">
               <h3>决策解释</h3>
-              {explanationPanel?.headline && <p>{String(explanationPanel.headline)}</p>}
-              {explanationSteps.length > 0 ? (
-                <ol className="list-stack">
-                  {explanationSteps.map((step, idx) => (
-                    <li className="list-item" key={`${idx}-${step}`}>
-                      <div className="list-content">
-                        <div className="row-sub">{step}</div>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+              {reportTitle && <h4>{reportTitle}</h4>}
+              {reportSubtitle && <p>{reportSubtitle}</p>}
+              {reportSummary ? (
+                <p>{reportSummary}</p>
               ) : (
-                <p>暂无解释步骤。</p>
+                explanationPanel?.headline && <p>{String(explanationPanel.headline)}</p>
               )}
-              {synthesisBullish.length > 0 && (
+
+              {reportSections.length > 0 ? (
                 <>
-                  <h4>看多驱动因素</h4>
-                  <ul className="report-list">
-                    {synthesisBullish.map((item, idx) => (
-                      <li key={`bull-${idx}`}>{item}</li>
-                    ))}
-                  </ul>
+                  {reportSections.map((section, idx) => (
+                    <div key={`report-section-${idx}`}>
+                      {section.title && <h4>{section.title}</h4>}
+                      {section.points.length > 0 && (
+                        <ul className="report-list">
+                          {section.points.map((point, pointIdx) => (
+                            <li key={`report-point-${idx}-${pointIdx}`}>{point}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                  {reportExpertMatrix.length > 0 && (
+                    <>
+                      <h4>专家观点矩阵</h4>
+                      <div className="list-stack">
+                        {reportExpertMatrix.map((row, idx) => (
+                          <article className="list-item" key={`report-expert-${idx}`}>
+                            <div className="list-content">
+                              <div className="row-title">
+                                {row.expertName || `专家${idx + 1}`}
+                                {row.signalLabel ? ` | ${row.signalLabel}` : ''}
+                                {row.score === null ? '' : ` | 评分 ${row.score.toFixed(2)}`}
+                                {row.confidence === null ? '' : ` | 置信度 ${row.confidence.toFixed(3)}`}
+                              </div>
+                              {row.summary && <div className="row-sub">{row.summary}</div>}
+                              {row.keyPoints.length > 0 && (
+                                <div className="row-sub">关键要点：{row.keyPoints.join('；')}</div>
+                              )}
+                              {row.risks.length > 0 && (
+                                <div className="row-sub">主要风险：{row.risks.join('；')}</div>
+                              )}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  {reportDisclaimer && (
+                    <>
+                      <h4>免责声明</h4>
+                      <p>{reportDisclaimer}</p>
+                    </>
+                  )}
                 </>
-              )}
-              {synthesisBearish.length > 0 && (
+              ) : (
                 <>
-                  <h4>看空驱动因素</h4>
-                  <ul className="report-list">
-                    {synthesisBearish.map((item, idx) => (
-                      <li key={`bear-${idx}`}>{item}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {synthesisConflicts.length > 0 && (
-                <>
-                  <h4>冲突消解</h4>
-                  <ul className="report-list">
-                    {synthesisConflicts.map((item, idx) => (
-                      <li key={`conflict-${idx}`}>{item}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {Array.isArray(investmentPayload?.risk_warnings) && investmentPayload.risk_warnings.length > 0 && (
-                <>
-                  <h4>风险提示</h4>
-                  <ul className="list-stack">
-                    {investmentPayload.risk_warnings.slice(0, 6).map((risk: any, idx: number) => (
-                      <li className="list-item" key={`${idx}-${risk}`}>
-                        <div className="list-content">
-                          <div className="row-sub">{String(risk)}</div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  {explanationSteps.length > 0 ? (
+                    <ol className="list-stack">
+                      {explanationSteps.map((step, idx) => (
+                        <li className="list-item" key={`${idx}-${step}`}>
+                          <div className="list-content">
+                            <div className="row-sub">{step}</div>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p>暂无解释步骤。</p>
+                  )}
+                  {synthesisBullish.length > 0 && (
+                    <>
+                      <h4>看多驱动因素</h4>
+                      <ul className="report-list">
+                        {synthesisBullish.map((item, idx) => (
+                          <li key={`bull-${idx}`}>{item}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {synthesisBearish.length > 0 && (
+                    <>
+                      <h4>看空驱动因素</h4>
+                      <ul className="report-list">
+                        {synthesisBearish.map((item, idx) => (
+                          <li key={`bear-${idx}`}>{item}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {synthesisConflicts.length > 0 && (
+                    <>
+                      <h4>冲突消解</h4>
+                      <ul className="report-list">
+                        {synthesisConflicts.map((item, idx) => (
+                          <li key={`conflict-${idx}`}>{item}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {Array.isArray(investmentPayload?.risk_warnings) && investmentPayload.risk_warnings.length > 0 && (
+                    <>
+                      <h4>风险提示</h4>
+                      <ul className="list-stack">
+                        {investmentPayload.risk_warnings.slice(0, 6).map((risk: any, idx: number) => (
+                          <li className="list-item" key={`${idx}-${risk}`}>
+                            <div className="list-content">
+                              <div className="row-sub">{String(risk)}</div>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                 </>
               )}
             </div>

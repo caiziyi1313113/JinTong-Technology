@@ -131,6 +131,7 @@ const STORAGE_TASK_MAP = 'stockai.query.task_map'
 const STORAGE_RESULT_MAP = 'stockai.query.result_map'
 const STORAGE_ACTIVE_SYMBOL = 'stockai.query.active_symbol'
 const SHOW_INLINE_RESULT_PANEL = false
+const SHOW_QUERY_SENTIMENT_PANEL = false
 const CHART_WIDTH = 920
 const CHART_HEIGHT = 430
 const PAD_LEFT = 58
@@ -429,6 +430,12 @@ export default function QueryStocks() {
     let cancelled = false
 
     async function loadSentiment() {
+      if (!SHOW_QUERY_SENTIMENT_PANEL) {
+        setSentimentResult(null)
+        setSentimentStatus('')
+        setSentimentLoading(false)
+        return
+      }
       const targetSymbol = result?.stock_symbol?.trim().toUpperCase()
       if (!targetSymbol) {
         setSentimentResult(null)
@@ -791,133 +798,210 @@ export default function QueryStocks() {
   return (
     <section className="screen">
       <div className="hero-block reveal-up">
-        <h1>Stock Analysis</h1>
+        <h1>查询股票</h1>
+        <p>输入股票代码，发起分析任务并查看每次查询卡片。</p>
+        <form className="search-pill" onSubmit={handleQuery}>
+          <input
+            value={symbol}
+            onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+            placeholder="输入股票代码，例如 000001"
+          />
+          <button className="pill-button" type="submit" disabled={loading}>
+            {loading ? '提交中...' : '查询'}
+          </button>
+        </form>
+        {status && <div className="inline-status">{status}</div>}
       </div>
 
-      <div className="paper-header with-top-line">
-        <h3>Sentiment Analysis</h3>
+      <div className="paper reveal-up delay-1">
+        <div className="paper-header with-top-line">
+          <h3>查询记录</h3>
+        </div>
+        {analysisCards.length > 0 ? (
+          <div className="list-stack">
+            {analysisCards.map(({ stockSymbol, task, result: cardResult }) => {
+              const totalSteps = Math.max(1, task?.total_steps || STAGE_LABELS.length)
+              const currentStep = clamp(task?.current_step || 0, 0, totalSteps)
+              const progress = Math.round((currentStep / totalSteps) * 100)
+              const isActive = stockSymbol === activeSymbol
+              return (
+                <article className="list-item" key={stockSymbol}>
+                  <div className="list-content">
+                    <div className="row-title">{stockSymbol}{isActive ? '（当前）' : ''}</div>
+                    <div className="row-sub">
+                      状态 {taskStatusLabel(task?.status)} | 阶段 {taskStageLabel(task?.stage)} | 进度 {currentStep}/{totalSteps} ({progress}%)
+                    </div>
+                    {task?.queue_position !== null && task?.queue_position !== undefined && (
+                      <div className="row-sub">排队位置 {task.queue_position}</div>
+                    )}
+                    {task?.message && <div className="row-sub">{task.message}</div>}
+                    {task?.error && <div className="row-sub">{task.error}</div>}
+                    {cardResult && (
+                      <div className="row-sub">
+                        决策 {decisionLabel(cardResult.final_action)}
+                      </div>
+                    )}
+                    <div className="control-row">
+                      <button
+                        className="btn invert"
+                        type="button"
+                        onClick={() => {
+                          setActiveSymbol(stockSymbol)
+                          setSymbol(stockSymbol)
+                          setSearchParams({ symbol: stockSymbol }, { replace: true })
+                        }}
+                      >
+                        选中
+                      </button>
+                      <button
+                        className="btn solid"
+                        type="button"
+                        onClick={() => runAnalysisForSymbol(stockSymbol)}
+                        disabled={loading}
+                      >
+                        重新分析
+                      </button>
+                      {cardResult && (
+                        <button className="btn solid" type="button" onClick={() => handleOpenStockDetail(stockSymbol)}>
+                          打开详情
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="empty-line">暂无查询记录，请先输入股票代码发起分析。</div>
+        )}
       </div>
-      <div className="control-row">
-        <button
-          className={`btn ${sentimentUpdating ? 'invert' : 'solid'}`}
-          type="button"
-          onClick={handleComputeTodaySentiment}
-          disabled={sentimentUpdating}
-        >
-          {sentimentUpdating ? 'Computing...' : 'Recompute Today Sentiment'}
-        </button>
-      </div>
-      {sentimentLoading && <div className="inline-status">Loading sentiment data...</div>}
-      {sentimentStatus && <div className="inline-status">{sentimentStatus}</div>}
-      {latestSentiment ? (
+
+      {SHOW_QUERY_SENTIMENT_PANEL && activeSymbol && (
         <>
-          <div className="metric-grid">
-            <div className="metric-box"><span>Trade Date</span><strong>{latestSentiment.trade_date}</strong></div>
-            <div className="metric-box"><span>Combined Score</span><strong>{latestSentiment.combined_score_norm.toFixed(3)}</strong></div>
-            <div className="metric-box"><span>Sentiment</span><strong>{latestSentiment.sentiment_label}</strong></div>
-            <div className="metric-box"><span>News Score</span><strong>{latestSentiment.news_score_norm.toFixed(3)}</strong></div>
-            <div className="metric-box"><span>Guba Score</span><strong>{latestSentiment.guba_score_norm.toFixed(3)}</strong></div>
-            <div className="metric-box"><span>Sample Size</span><strong>{latestSentiment.news_count + latestSentiment.guba_count}</strong></div>
-            <div className="metric-box"><span>Trend Signal</span><strong>{latestSentiment.trend_signal}</strong></div>
-            <div className="metric-box"><span>5D Trend</span><strong>{latestSentiment.trend_5d === null || latestSentiment.trend_5d === undefined ? '-' : latestSentiment.trend_5d.toFixed(3)}</strong></div>
-            <div className="metric-box"><span>Reliability</span><strong>{latestSentiment.reliability_level}</strong></div>
+          <div className="paper-header with-top-line">
+            <h3>情绪分析</h3>
           </div>
-
-          <div className="trade-panel">
-            <h3>Strategy Notes</h3>
-            <p>Matrix advice: {latestSentiment.strategy_matrix_advice || '-'}</p>
-            <p>Valuation level: {latestSentiment.valuation_level}</p>
-            <p>Valuation reason: {latestSentiment.valuation_reason || '-'}</p>
-            <p>
-              Sentiment-return correlation:
-              {latestSentiment.corr_with_next_return === null || latestSentiment.corr_with_next_return === undefined
-                ? ' -'
-                : ` ${latestSentiment.corr_with_next_return.toFixed(3)} (${latestSentiment.corr_sample_size} samples)`}
-            </p>
-            <p>
-              Delta series:
-              {latestSentiment.trend_deltas?.length
-                ? ` ${latestSentiment.trend_deltas.map((v, idx) => `d${idx + 1}:${v >= 0 ? '+' : ''}${v.toFixed(3)}`).join(' | ')}`
-                : ' -'}
-            </p>
-            <p>Trend conclusion: {latestSentiment.trend_conclusion || 'No obvious pattern today.'}</p>
-            <p>Summary: {latestSentiment.strategy_summary || '-'}</p>
-            <p>Indicator note: trend_signal shows recent sentiment direction (up/down/none).</p>
-            <p>Indicator note: 5D trend is the net change of combined sentiment score over 5 trading days.</p>
-            <p>Indicator note: reliability reflects sample size and historical stability; it is for reference only.</p>
+          <div className="control-row">
+            <button
+              className={`btn ${sentimentUpdating ? 'invert' : 'solid'}`}
+              type="button"
+              onClick={handleComputeTodaySentiment}
+              disabled={sentimentUpdating}
+            >
+              {sentimentUpdating ? '计算中...' : '重新生成今日情绪'}
+            </button>
           </div>
-
-          <div className="trade-panel">
-            <h3>Recent Sentiment Series</h3>
-            {recentSentimentSeries.length > 0 ? (
-              <div className="list-stack">
-                {recentSentimentSeries.slice(0, 10).map((row) => (
-                  <article className="list-item" key={row.trade_date}>
-                    <div className="list-content">
-                      <div className="row-title">{row.trade_date}</div>
-                      <div className="row-sub">
-                        Combined {row.combined_score_norm.toFixed(3)} | News {row.news_score_norm.toFixed(3)} |
-                        Guba {row.guba_score_norm.toFixed(3)} | Label {row.sentiment_label}
-                      </div>
-                      <div className="row-sub">
-                        Close {row.close === null || row.close === undefined ? '-' : row.close.toFixed(2)} |
-                        Samples {row.news_count + row.guba_count}
-                      </div>
-                    </div>
-                  </article>
-                ))}
+          {sentimentLoading && <div className="inline-status">加载情绪数据中...</div>}
+          {sentimentStatus && <div className="inline-status">{sentimentStatus}</div>}
+          {latestSentiment ? (
+            <>
+              <div className="metric-grid">
+                <div className="metric-box"><span>交易日</span><strong>{latestSentiment.trade_date}</strong></div>
+                <div className="metric-box"><span>综合分</span><strong>{latestSentiment.combined_score_norm.toFixed(3)}</strong></div>
+                <div className="metric-box"><span>情绪标签</span><strong>{latestSentiment.sentiment_label}</strong></div>
+                <div className="metric-box"><span>新闻得分</span><strong>{latestSentiment.news_score_norm.toFixed(3)}</strong></div>
+                <div className="metric-box"><span>股吧得分</span><strong>{latestSentiment.guba_score_norm.toFixed(3)}</strong></div>
+                <div className="metric-box"><span>样本数</span><strong>{latestSentiment.news_count + latestSentiment.guba_count}</strong></div>
+                <div className="metric-box"><span>趋势信号</span><strong>{latestSentiment.trend_signal}</strong></div>
+                <div className="metric-box"><span>5日趋势</span><strong>{latestSentiment.trend_5d === null || latestSentiment.trend_5d === undefined ? '-' : latestSentiment.trend_5d.toFixed(3)}</strong></div>
+                <div className="metric-box"><span>可靠性(一致率)</span><strong>{latestSentiment.reliability_level}</strong></div>
               </div>
-            ) : (
-              <p>No sentiment history.</p>
-            )}
-          </div>
 
-          <div className="trade-panel">
-            <h3>Latest News Samples</h3>
-            {newsSentimentItems.length > 0 ? (
-              <div className="list-stack">
-                {newsSentimentItems.slice(0, 5).map((item, idx) => (
-                  <article className="list-item" key={`news-${idx}-${item.title || item.text.slice(0, 16)}`}>
-                    <div className="list-content">
-                      <div className="row-title">{item.title || 'News'}</div>
-                      <div className="row-sub">
-                        Label {item.label} | Score {item.score_norm.toFixed(3)} | Positive {item.positive_prob.toFixed(3)} |
-                        Negative {item.negative_prob.toFixed(3)}
-                      </div>
-                      <div className="row-sub">{item.text}</div>
-                    </div>
-                  </article>
-                ))}
+              <div className="trade-panel">
+                <h3>策略应用</h3>
+                <p>矩阵建议：{latestSentiment.strategy_matrix_advice || '-'}</p>
+                <p>估值水平：{latestSentiment.valuation_level}</p>
+                <p>估值依据：{latestSentiment.valuation_reason || '-'}</p>
+                <p>
+                  情绪-价格同日信号相关性：
+                  {latestSentiment.corr_with_next_return === null || latestSentiment.corr_with_next_return === undefined
+                    ? ' -'
+                    : ` ${latestSentiment.corr_with_next_return.toFixed(3)}（${latestSentiment.corr_sample_size} 个样本）`}
+                </p>
+                <p>
+                  变化序列：
+                  {latestSentiment.trend_deltas?.length
+                    ? ` ${latestSentiment.trend_deltas.map((v, idx) => `d${idx + 1}:${v >= 0 ? '+' : ''}${v.toFixed(3)}`).join(' | ')}`
+                    : ' -'}
+                </p>
+                <p>趋势结论：{latestSentiment.trend_conclusion || '今日无明显特征。'}</p>
+                <p>总结：{latestSentiment.strategy_summary || '-'}</p>
               </div>
-            ) : (
-              <p>No news sentiment samples.</p>
-            )}
-          </div>
 
-          <div className="trade-panel">
-            <h3>Latest Guba Samples</h3>
-            {gubaSentimentItems.length > 0 ? (
-              <div className="list-stack">
-                {gubaSentimentItems.slice(0, 5).map((item, idx) => (
-                  <article className="list-item" key={`guba-${idx}-${item.external_id || item.text.slice(0, 16)}`}>
-                    <div className="list-content">
-                      <div className="row-title">{item.title || 'Guba Post'}</div>
-                      <div className="row-sub">
-                        Label {item.label} | Score {item.score_norm.toFixed(3)} | Positive {item.positive_prob.toFixed(3)} |
-                        Negative {item.negative_prob.toFixed(3)}
-                      </div>
-                      <div className="row-sub">{item.text}</div>
-                    </div>
-                  </article>
-                ))}
+              <div className="trade-panel">
+                <h3>近期情绪序列</h3>
+                {recentSentimentSeries.length > 0 ? (
+                  <div className="list-stack">
+                    {recentSentimentSeries.slice(0, 10).map((row) => (
+                      <article className="list-item" key={row.trade_date}>
+                        <div className="list-content">
+                          <div className="row-title">{row.trade_date}</div>
+                          <div className="row-sub">
+                            综合 {row.combined_score_norm.toFixed(3)} | 新闻 {row.news_score_norm.toFixed(3)} |
+                            股吧 {row.guba_score_norm.toFixed(3)} | 标签 {row.sentiment_label}
+                          </div>
+                          <div className="row-sub">
+                            收盘 {row.close === null || row.close === undefined ? '-' : row.close.toFixed(2)} |
+                            样本 {row.news_count + row.guba_count}
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p>暂无情绪历史。</p>
+                )}
               </div>
-            ) : (
-              <p>No guba sentiment samples.</p>
-            )}
-          </div>
+
+              <div className="trade-panel">
+                <h3>最新新闻样本</h3>
+                {newsSentimentItems.length > 0 ? (
+                  <div className="list-stack">
+                    {newsSentimentItems.slice(0, 5).map((item, idx) => (
+                      <article className="list-item" key={`news-${idx}-${item.title || item.text.slice(0, 16)}`}>
+                        <div className="list-content">
+                          <div className="row-title">{item.title || '新闻'}</div>
+                          <div className="row-sub">
+                            标签 {item.label} | 评分 {item.score_norm.toFixed(3)} | 正向 {item.positive_prob.toFixed(3)} |
+                            负向 {item.negative_prob.toFixed(3)}
+                          </div>
+                          <div className="row-sub">{item.text}</div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p>暂无新闻情绪样本。</p>
+                )}
+              </div>
+
+              <div className="trade-panel">
+                <h3>最新股吧样本</h3>
+                {gubaSentimentItems.length > 0 ? (
+                  <div className="list-stack">
+                    {gubaSentimentItems.slice(0, 5).map((item, idx) => (
+                      <article className="list-item" key={`guba-${idx}-${item.external_id || item.text.slice(0, 16)}`}>
+                        <div className="list-content">
+                          <div className="row-title">{item.title || '股吧帖子'}</div>
+                          <div className="row-sub">
+                            标签 {item.label} | 评分 {item.score_norm.toFixed(3)} | 正向 {item.positive_prob.toFixed(3)} |
+                            负向 {item.negative_prob.toFixed(3)}
+                          </div>
+                          <div className="row-sub">{item.text}</div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p>暂无股吧情绪样本。</p>
+                )}
+              </div>
+            </>
+          ) : (
+            !sentimentLoading && <div className="empty-line">暂无情绪数据，请点击“重新生成今日情绪”。</div>
+          )}
         </>
-      ) : (
-        !sentimentLoading && <div className="empty-line">No sentiment data. Click to recompute today's sentiment.</div>
       )}
 
       {SHOW_INLINE_RESULT_PANEL && result && (

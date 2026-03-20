@@ -1,0 +1,3 @@
+2026/03/15-21:43:04.123 1259 Reusing MANIFEST /mnt/d/master_dynamic/backend/.cninfo_profile/Default/shared_proto_db/metadata/MANIFEST-000001
+2026/03/15-21:43:04.141 1259 Recovering log #3
+2026/03/15-21:43:04.146 1259 Reusing old log /mnt/d/master_dynamic/backend/.cninfo_profile/Default/shared_proto_db/metadata/000003.log 

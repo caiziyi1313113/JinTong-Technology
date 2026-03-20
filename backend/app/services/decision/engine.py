@@ -52,14 +52,14 @@ engine
 
 （被 analysis.py / planner.py 调用）
 '''
-
+#不同持风险承受度用不同权重
 RISK_WEIGHTS = {
     "low": {"fundamental": 0.35, "financial": 0.3, "technical": 0.15, "news": 0.1, "macro": 0.1},
     "medium": {"fundamental": 0.3, "financial": 0.25, "technical": 0.2, "news": 0.15, "macro": 0.1},
     "high": {"fundamental": 0.2, "financial": 0.2, "technical": 0.3, "news": 0.2, "macro": 0.1},
 }
 
-
+# 不同持仓周期用不同的决策模板，包含权重偏向、阈值、止损止盈等参数
 HORIZON_TEMPLATES = {
     "short": {
         "bias": {"fundamental": 0.8, "financial": 0.9, "technical": 1.3, "news": 1.2, "macro": 0.8},
@@ -114,14 +114,32 @@ def _normalize_style(value: str | None) -> str:
         return "aggressive"
     return "balanced"
 
+# 不同专家最终应该占多大权重，根据风险等级和持仓周期调整
+'''
+这个函数在算：
 
+不同专家最终应该占多大权重
+
+输入：
+
+base：基础权重，比如低风险用户更重基本面
+
+bias：根据投资周期再调一次，比如短线更重技术面、新闻面
+'''
 def _blend_weights(base: Dict[str, float], bias: Dict[str, float]) -> Dict[str, float]:
     merged = {}
     for expert in {"fundamental", "financial", "technical", "news", "macro"}:
         merged[expert] = max(0.01, base.get(expert, 0.1) * bias.get(expert, 1.0))
     total = sum(merged.values()) or 1.0
     return {k: v / total for k, v in merged.items()}
-
+# 加权分数
+'''
+输入：
+signals：每个专家输出的结果
+weights：每个专家的权重
+selected：可选，只挑部分专家来算
+专家贡献 = 专家分数 × 专家权重 × 专家置信度
+'''
 
 def _weighted_score(signals: List[dict], weights: Dict[str, float], selected: set[str] | None = None) -> float:
     weighted = 0.0
@@ -138,7 +156,14 @@ def _weighted_score(signals: List[dict], weights: Dict[str, float], selected: se
 
     return weighted / total_weight if total_weight else 0.5
 
-
+# 情绪派和数据派是不是一致
+'''
+输入：
+sentiment_score
+data_score
+先算差值：
+gap = abs(sentiment_score - data_score)
+'''
 def _make_alignment(sentiment_score: float, data_score: float) -> tuple[str, str]:
     gap = abs(sentiment_score - data_score)
     if gap <= 0.08 or ((sentiment_score >= 0.55 and data_score >= 0.55) or (sentiment_score <= 0.45 and data_score <= 0.45)):
@@ -147,7 +172,7 @@ def _make_alignment(sentiment_score: float, data_score: float) -> tuple[str, str
         return "conflict", "Sentiment is stronger than market/financial data."
     return "conflict", "Market/financial data is stronger than sentiment."
 
-
+# 在当前风险约束下，最多建议买/卖多少股
 def _risk_based_shares(profile: UserProfile, current_price: float, stop_loss_price: float, position_ratio: float) -> tuple[float, int]:
     assets = max(0.0, float(profile.assets))
     risk_budget = max(0.005, min(float(profile.risk_budget), 0.3))
@@ -160,6 +185,21 @@ def _risk_based_shares(profile: UserProfile, current_price: float, stop_loss_pri
     suggested_shares = max(0, min(shares_by_risk, shares_by_capital))
     return round(tolerable_loss_amount, 2), suggested_shares
 
+'''
+fuse_signals
+
+把上面所有结果合起来，算出：
+
+买 / 卖 / 持有
+
+仓位比例
+
+止损止盈
+
+建议股数
+
+交易说明
+'''
 
 def fuse_signals(profile: UserProfile, signals: List[dict], current_price: float, position: dict | None = None) -> dict:
     horizon = _normalize_horizon(profile.investment_horizon)

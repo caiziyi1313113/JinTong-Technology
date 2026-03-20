@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, func
+﻿from sqlalchemy import Column, Integer, String, DateTime, func
 from sqlalchemy.orm import relationship
 
 from app.core.db import Base
@@ -17,3 +17,4 @@ class User(Base):
     positions = relationship("Position", back_populates="user")
     trade_plans = relationship("TradePlan", back_populates="user")
     trade_signals = relationship("TradeSignal", back_populates="user")
+    portfolio_trades = relationship("PortfolioTrade", back_populates="user")

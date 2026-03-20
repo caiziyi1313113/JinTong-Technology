@@ -11,6 +11,8 @@ class PositionCreate(BaseModel):
 
 class PositionClose(BaseModel):
     quantity: float | None = None
+    price: float | None = None
+    note: str | None = None
 
 
 class PositionOut(BaseModel):

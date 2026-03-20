@@ -1,0 +1,7 @@
+2026/03/15-21:43:04.085 127b Reusing MANIFEST /mnt/d/master_dynamic/backend/.cninfo_profile/Default/Session Storage/MANIFEST-000001
+2026/03/15-21:43:04.115 127b Recovering log #241
+2026/03/15-21:43:04.175 127b Level-0 table #243: started
+2026/03/15-21:43:04.244 127b Level-0 table #243: 378010 bytes OK
+2026/03/15-21:43:04.289 127b Delete type=0 #241
+2026/03/15-21:43:13.175 1300 Level-0 table #246: started
+2026/03/15-21:43:13.222 1300 Level-0 table #246: 378012 bytes OK
