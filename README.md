@@ -1,246 +1,219 @@
-﻿# Stock Intelligence System (AKShare + Five Experts + Investment Expert)
-
-本项目已升级为一个可落地的多专家股票分析系统：
-- `数据层`: AKShare 拉取实时/历史/公告/财务/大宗交易，并入库
-- `分析层`: 新闻专家、股票数据专家、宏观面专家、财务数据专家、公司基本面专家
-- `决策层`: 投资专家整合五专家结论 + 用户画像 + 持仓，输出可执行交易方案
-- `展示层`: 前端展示排行榜、冲突信号（红/绿灯）、专家依据、投资方案
-- `市场范围`: 仅支持深圳主板 A 股（`000/001/002/003` 开头）
-
-## 1. 目录
-- `backend/`: FastAPI + SQLAlchemy + PostgreSQL
-- `frontend/`: React + Vite
-- `backend/scripts/run_pipeline.py`: 一键跑数据同步 + 排行
-
-## 2. 核心能力（已实现）
-### 2.1 数据采集与入库
-- 实时行情: `stock_sz_a_spot_em`（并过滤为深圳主板 A 股）
-- 历史 K 线（日/周/月）: `stock_zh_a_hist`
-- 大宗交易: `stock_dzjy_mrmx`
-- 公司基本面: `stock_individual_info_em` + `stock_zyjs_ths`
-- 财务指标: `stock_financial_analysis_indicator_em`
-- 全局快讯（新闻/宏观）: `stock_info_global_em`
-- 公司公告: `stock_zh_a_disclosure_report_cninfo`
-
-### 2.2 数据表（新增）
-- `stock_klines`: 日/周/月 K 线
-- `stock_quotes`: 实时快照
-- `block_trade_records`: 大宗交易明细
-- `company_fundamentals`: 公司基本面快照（月度手动更新）
-- `company_financials`: 财务指标快照（月度手动更新）
-- `ranking_snapshots` + `ranking_items`: 排行榜快照及明细
-- `portfolio_trades`: 用户交易流水
-- `data_sync_logs`: 同步任务日志
-
-### 2.3 专家体系
-- 五专家由 LLM 驱动（优先智谱），若无 Key 自动回退到规则专家
-- 投资专家输出结构化交易方案：
-  - 买入策略
-  - 仓位管理
-  - 止盈计划
-  - 回本策略
-  - 止损策略
-  - 动态调整机制
-
-### 2.4 冲突信号
-- 数据驱动分数: 股票数据专家
-- 情绪驱动分数: 新闻专家 + 宏观专家均值
-- 方向相反则 `conflict_signal=true`（前端红灯），一致则绿灯
-
-## 3. 后端启动
-### 3.1 安装依赖
-```bash
+智能股票分析系统
+基于大语言模型的多专家协作股票分析与投资决策平台
+项目简介
+本项目是一个面向个人投资者的智能股票分析系统，采用 LangChain + LangGraph 框架构建多专家协作架构，集成 RAG 知识库、大语言模型、金融数据 API 与可视化工具，实现从数据采集、多维度分析到个性化投资建议生成的全链路自动化。
+系统核心特色：
+五专家并行分析：新闻、股票数据、宏观面、财务数据、公司基本面五大领域专家独立分析
+个性化投资方案：基于用户风险画像与持仓情况，生成包含买入、仓位、止盈、止损的完整交易策略
+智能复盘与追踪：每日闭盘后自动复盘生成推荐排行榜，实时追踪用户持仓股票并提供动态建议
+情绪指数分析：集成金融情绪模型，量化市场情绪并应用于投资策略
+量化因子计算：基于财务数据计算 ROE、PE、PB 等核心量化指标，提升分析专业性
+系统架构
+plain
+复制
+┌─────────────────────────────────────────────────────────────┐
+│                        用户前端 (Web/App)                      │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────┐
+│              用户画像 & 偏好系统 (问卷 / 行为 / 资产)           │
+└─────────────────────────────┬───────────────────────────────┘
+                              │
+┌─────────────────────────────▼───────────────────────────────┐
+│              决策融合层 (LLM + Multi-Agent)                   │
+│         投资专家 (整合5专家结果 + 用户个性 → 投资建议)          │
+└─────────────┬─────────────┬─────────────┬───────────┬───────┘
+              │             │             │           │
+    ┌─────────▼────┐ ┌──────▼──────┐ ┌────▼─────┐ ┌───▼────┐ ┌──▼───┐
+    │  新闻专家    │ │ 股票数据专家 │ │ 宏观面专家│ │财务专家│ │基本面│
+    │ (舆情分析)   │ │ (技术分析)   │ │ (宏观分析)│ │(财报) │ │专家  │
+    └──────────────┘ └─────────────┘ └──────────┘ └────────┘ └──────┘
+                              │
+                   ┌──────────▼──────────┐
+                   │   数据采集与清洗层   │
+                   │ (AKShare / 东方财富) │
+                   └─────────────────────┘
+核心功能模块
+1. 智能复盘系统
+定时触发：每日闭盘后（16:00）自动执行
+数据更新：自动吸纳当日交易数据、新闻、宏观面变化；财务与基本面数据按月手动更新
+排行榜生成：五专家分别评分，加权计算综合得分并排序
+详情分析：点击股票进入分析页，展示公司概况、五专家分析、投资建议与信号
+信号冲突检测：自动识别数据驱动专家（股票数据）与情绪驱动专家（新闻、宏观）的信号冲突，以红/绿灯警示
+2. 持仓追踪与实时建议
+展示用户持仓股票的代码、名称、交易记录（时间、股数、单价、买卖方向）
+开盘实时追踪：监测交易数据、新闻、宏观面变化，实时更新分析与建议
+闭盘复用：无新数据时复用历史分析结果
+3. 单股查询分析
+输入股票代码查询单只股票
+展示公司基本情况、五专家分析结果、投资建议与方案
+支持日K线、周K线、月K线、成交量等交互式可视化图表（可拖拽、缩放、点击查看数据）
+4. 情绪分析模块
+双模型融合：
+RoBERTa_based_on_eastmoney_guba_comments（东方财富股吧评论情绪）
+finbert-tone-chinese（金融分析师报告情绪）
+情绪指数构建：基于新闻与股吧评论计算每日情绪指数
+趋势分析：滚动计算多日情绪变化，识别情绪拐点
+策略应用：结合估值偏离度与情绪趋势，生成做多/卖出/观望/反转布局建议
+价格相关性验证：计算情绪指数与股价的相关性，评估信号可靠性
+5. 独立宏观分析
+独立导航栏模块，一键生成今日宏观分析报告
+综合分析：中国宏观经济、证券市场、行业板块轮动、全球宏观局势
+输出结构化报告：总判断 → 宏观环境 → 市场分析 → 行业轮动 → 全球影响 → 投资结论
+技术栈
+表格
+层级	技术选型
+前端框架	React / Vue (Web/App)
+后端框架	Python + FastAPI
+AI 框架	LangChain + LangGraph
+大语言模型	智谱 AI (Zhipu GLM)
+金融数据	AKShare、东方财富爬虫
+情绪模型	HuggingFace Transformers (RoBERTa / FinBERT)
+数据库	MySQL / PostgreSQL
+可视化	ECharts / TradingView Charting Library
+部署	Docker + Nginx
+专家体系详解
+新闻专家
+公司重大新闻事件、行业政策变化、监管动态
+并购合作、市场舆情、媒体报道
+区分短期情绪影响与中长期经营预期
+识别关键事件与噪音，判断市场是否已交易该信息
+股票数据专家
+历史/实时交易数据、大宗交易、K线走势
+技术指标（均线、MACD、RSI）、成交量与换手率
+资金流向分析（主力/散户）
+判定趋势状态，识别主力资金动向与交易活跃度
+宏观面专家
+国内宏观经济（GDP、CPI、PMI、社融、利率等）
+货币政策与财政政策变化
+国际经济形势、全球市场变化
+提炼宏观主线，分析"宏观变量 → 传导路径 → 公司影响"
+财务数据专家
+三大报表分析（资产负债表、利润表、现金流量表）
+量化因子计算：ROE、ROA、PE、PB、PS、毛利率、资产负债率等
+近三年财务趋势与行业对比
+判断公司状态：稳健 / 修复 / 承压 / 恶化
+公司基本情况专家
+主营业务、商业模式、行业地位（申万分类）
+核心竞争优势与可持续壁垒
+股权结构、前十大股东变化
+公司战略与长期发展潜力
+投资专家（整合层）
+融合五专家分析结果
+结合用户风险画像（RSI 指数）与持仓情况
+生成完整投资方案：买入策略、仓位管理、止盈、回本、止损、动态调整
+用户风险画像模型
+基于 Kahneman-Tversky 前景理论 与 Grable-Lytton 财务风险容忍度量表，构建四维风险敏感度量化模型：
+表格
+维度	权重	说明
+D1 损失厌恶	35%	最大可承受亏损金额
+D2 风险舒适区	30%	下跌20%时的应对行为
+D3 投资视界	15%	计划投资时长
+D4 金融素养	20%	历史投资经验与品类
+风险敏感度指数（RSI）：[0, 1] 连续值
+[0.00, 0.25)：保守型
+[0.25, 0.50)：稳健型
+[0.50, 0.75)：进取型
+[0.75, 1.00]：激进型
+项目结构
+plain
+复制
+├── backend/
+│   ├── agents/                 # LangGraph 智能体定义
+│   │   ├── news_agent.py
+│   │   ├── stock_data_agent.py
+│   │   ├── macro_agent.py
+│   │   ├── financial_agent.py
+│   │   ├── fundamental_agent.py
+│   │   └── investment_agent.py
+│   ├── prompts/                # 专家提示词模板
+│   │   └── prompt.py
+│   ├── data_collection/        # 数据采集模块
+│   │   ├── akshare_client.py
+│   │   └── eastmoney_crawler.py
+│   ├── financial_analysis/     # 财务数据与量化因子
+│   │   ├── financial_crawler.py
+│   │   ├── quant_factors.py
+│   │   └── tests/
+│   │       ├── test_crawler.py
+│   │       └── test_factors.py
+│   ├── sentiment/              # 情绪分析模块
+│   │   ├── sentiment_model.py
+│   │   ├── emotion_index.py
+│   │   └── strategy.py
+│   ├── database/               # 数据库模型与操作
+│   ├── api/                    # FastAPI 路由
+│   └── main.py
+├── frontend/
+│   ├── src/
+│   │   ├── components/         # 可视化图表组件
+│   │   ├── pages/              # 页面路由
+│   │   └── services/           # API 调用
+│   └── package.json
+├── docker-compose.yml
+└── README.md
+快速开始
+环境要求
+Python 3.10+
+Node.js 18+
+MySQL 8.0+
+安装依赖
+bash
+复制
+# 后端
 cd backend
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# Linux / macOS
-# source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 3.2 环境变量（示例）
-```bash
-DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/stockai
-JWT_SECRET=change-me
-ALLOWED_ORIGINS=http://localhost:5173
-
-# 启用智谱 LLM（zai-sdk）
-ZHIPU_API_KEY_NEWS=your_news_key
-ZHIPU_API_KEY_STOCK_DATA=your_stock_data_key
-ZHIPU_API_KEY_MACRO=your_macro_key
-ZHIPU_API_KEY_FINANCIAL=your_financial_key
-ZHIPU_API_KEY_FUNDAMENTAL=your_fundamental_key
-ZHIPU_API_KEY_INVESTMENT=your_investment_key
-ZHIPU_MODEL=glm-4.7-flash
-ZHIPU_THINKING_TYPE=enabled
-ZHIPU_MAX_TOKENS=65536
-LLM_TIMEOUT_SECONDS=45
-ZHIPU_ALLOW_CROSS_ROLE_KEY_FALLBACK=false
-ZHIPU_RATE_LIMIT_INTERVAL_SECONDS=2.0
-ZHIPU_RETRY_BASE_DELAY_SECONDS=2.5
-ZHIPU_RETRY_MAX_DELAY_SECONDS=20.0
-ZHIPU_RETRY_JITTER_SECONDS=0.8
-```
-
-### 3.3 智谱 SDK 验证（可选）
-```bash
-# 项目依赖已包含 zai-sdk==0.2.2，也可单独安装
-pip install zai-sdk==0.2.2
-
-# 检查 SDK 与 API 连通性（无 key 仅检查安装）
-python scripts/check_zhipu.py
-
-# 指定 key 做一次真实调用
-python scripts/check_zhipu.py --api-key your_key --model glm-4.7-flash
-```
-
-### 3.4 初始化数据库并启动
-```bash
-python scripts/init_db.py
-python scripts/seed_demo.py
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-## 4. 前端启动
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-## 5. 新增 API
-### 5.1 数据同步
-- `POST /api/v1/data/sync/daily`
-- `POST /api/v1/data/sync/static`
-- `GET /api/v1/data/sync/logs`
-
-### 5.2 排行榜
-- `POST /api/v1/workflow/ranking/run`
-- `GET /api/v1/workflow/ranking/latest`
-- `GET /api/v1/workflow/ranking/{snapshot_id}`
-
-### 5.3 单股分析
-- `POST /api/v1/analysis`
-- `GET /api/v1/analysis/{id}`
-
-### 5.4 持仓与交易流水
-- `GET /api/v1/portfolio/positions`
-- `POST /api/v1/portfolio/positions`
-- `POST /api/v1/portfolio/positions/{id}/close`
-- `GET /api/v1/portfolio/trades`
-- `POST /api/v1/portfolio/trades`
-
-### 5.5 单股情绪分析（新闻 + 股吧双模型）
-- `GET /api/v1/sentiment/{symbol}/latest`
-- `POST /api/v1/sentiment/{symbol}/compute`
-
-## 6. 自动化脚本
-```bash
-# 全流程（同步 + 排行）
-python backend/scripts/run_pipeline.py --mode all --date 2026-03-09 --top-n 30 --snapshot-type post_close
-
-# 仅静态全量（每月）
-python backend/scripts/run_pipeline.py --mode static --symbols 000001,002594,003816
-
-# 静态全量（深圳主板A股全部，推荐月度手动跑）
-python backend/scripts/run_static_all_sz_main.py --refresh-universe --batch-size 50 --sleep-seconds 0.8
-
-# 仅排行（不拉数据）
-python backend/scripts/run_pipeline.py --mode ranking --date 2026-03-09 --top-n 30 --snapshot-type pre_open
-```
-
-## 6.1 查询触发增量更新（已实现）
-- 前端触发 `POST /api/v1/analysis` 时，后端会先对该股票执行 `sync_symbol_hot_data` 增量检查：
-  - 单股实时行情
-  - 必要时日/周/月K线补齐
-  - 公司公告增量
-  - 公司相关新闻（从全局快讯筛该股票）
-  - 宏观快讯
-- 然后再运行五专家与投资专家，返回最新分析、投资建议与信号。
-- 触发交易计划 `POST /api/v1/trades/plans` 时也会先做同样的单股增量刷新。
-
-## 6.3 情绪模块验证脚本
-```bash
-# 1) 验证东方财富股吧抓取
-python backend/scripts/sentiment/test_guba_scraper.py --symbol 000056 --date 2026-03-13 --max-pages 5 --show 10
-
-# 2) 验证 AKShare 新闻抓取
-python backend/scripts/sentiment/test_akshare_news.py --symbol 000056 --date 2026-03-13 --show 10
-
-# 3) 验证新闻文本 -> 模型打分（finbert-tone-chinese）
-python backend/scripts/sentiment/test_news_model_scoring.py --symbol 000056 --date 2026-03-13 --max-items 60 --show 15
-
-# 4) 验证股吧文本 -> 模型打分（RoBERTa_based_on_eastmoney_guba_comments）
-python backend/scripts/sentiment/test_guba_model_scoring.py --symbol 000056 --date 2026-03-13 --show 15
-
-# 5) 按指定日期计算并入库（新闻+股吧一起，适用于历史回填）
-python backend/scripts/sentiment/run_sentiment_for_date.py --symbol 000056 --date 2026-03-13
-
-# 6) 按日期区间批量回填（start/end 一次补齐）
-python backend/scripts/sentiment/run_sentiment_backfill_range.py --symbol 002080 --start-date 2026-02-01 --end-date 2026-03-20 --continue-on-error --print-each
-```
-002648
-## 6.4 重新启动程序（启用情绪功能）
-```bash
-# 1) 安装后端依赖（情绪模型需要 transformers + torch）
-cd backend
-python -m venv .venv
-.venv\Scripts\activate
 pip install -r requirements.txt
 
-# 2) 初始化/更新表结构（会创建 stock_sentiment_daily / stock_sentiment_item）
-python scripts/init_db.py
-
-# 3) 启动后端
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-
-# 4) 新开终端启动前端
+# 前端
 cd frontend
 npm install
-npm run dev
-```
-
-## 6.5 本地下载情绪模型（不依赖 .env）
-如果你希望模型完全走本地目录，不走线上 HuggingFace，可执行：
-
-```bash
-# 在项目根目录
-python backend/scripts/sentiment/download_sentiment_models.py --base-dir backend/models/sentiment --hf-endpoint https://hf-mirror.com
-```
-
-下载后，修改 `backend/app/core/config.py` 顶部四个常量：
-- `LOCAL_SENTIMENT_GUBA_MODEL`
-- `LOCAL_SENTIMENT_GUBA_TOKENIZER`
-- `LOCAL_SENTIMENT_NEWS_MODEL`
-- `LOCAL_HF_CACHE_DIR`
-
-> 这些常量有值时会优先覆盖默认远程模型名，因此无需再在 `.env` 里配置情绪模型路径。
-
-验证：
-```bash
-python backend/scripts/sentiment/test_guba_model_scoring.py --symbol 601669 --date 2026-03-13 --max-pages 5 --max-items 50 --show 15
-```
-
-## 6.2 首次启动建议（先有数据再做“是否更新”检测）
-```bash
-# 1) 初始化库
+配置环境变量
+bash
+复制
+cp .env.example .env
+# 编辑 .env 文件，配置数据库连接与智谱 API Key
+初始化数据库
+bash
+复制
 python backend/scripts/init_db.py
+启动服务
+bash
+复制
+# 后端
+uvicorn backend.main:app --reload
 
-# 2) 建立股票池 + 高频基础数据
-python backend/scripts/run_pipeline.py --mode daily --date 2026-03-09
+# 前端
+cd frontend && npm run dev
+验证脚本
+项目提供独立的验证脚本，确保核心功能可靠性：
+bash
+复制
+# 验证东方财富财务数据爬取
+python backend/financial_analysis/tests/test_crawler.py
 
-# 3) 一次性补齐低频静态数据（全市场）
-python backend/scripts/run_static_all_sz_main.py --refresh-universe --batch-size 50 --sleep-seconds 0.8
-```
+# 验证量化因子计算
+python backend/financial_analysis/tests/test_factors.py
 
-## 7. 推荐调度
-- 每个交易日 `16:00`：`daily sync + post_close ranking`
-- 次日开盘前（如 `08:50`）：`pre_open ranking`
-- 每月 1 次：`static sync`（公司基本面、财务全量）
+# 验证股吧评论爬取
+python backend/sentiment/tests/test_guba_crawler.py
 
-## 8. 注意事项
-- 当前仅支持深圳主板 A 股；非目标市场代码会在同步与分析阶段被自动跳过或拒绝。
-- 如果未配置对应角色的 `ZHIPU_API_KEY_*`，该角色会走规则专家 fallback，系统仍可运行。
-- 首次跑 A 股全量同步耗时较长，建议先用 `symbols` 小范围试跑。
-- 前端/后端需分别安装依赖；当前环境未安装 `npm` 或 Python 包时无法本地直接运行。
+# 验证新闻数据获取
+python backend/sentiment/tests/test_news_fetch.py
+
+# 验证情绪指标计算（支持指定日期回溯）
+python backend/sentiment/tests/test_emotion_index.py --date 2026-04-30
+核心算法说明
+情绪指数构建
+爬取东方财富股吧评论与当日新闻
+数据清洗：过滤表情包、删除 >200 字评论
+双模型推理：分别输出 Positive / Neutral / Negative
+日度情绪指数 = 加权平均情感得分
+滚动趋势：计算 (t, t-1), (t-1, t-2) ... (t-4, t-5) 五日变化量
+并行专家加速
+利用 6 个智谱 API Key 分别为 5 个专家实例分配独立账号
+数据就绪后同时触发 5 个专家并行分析
+全部返回后由投资专家整合生成最终建议
+参考文献
+Kahneman, D., & Tversky, A. (1979). Prospect Theory: An Analysis of Decision under Risk. Econometrica, 47(2), 263-291. https://doi.org/10.2307/1914185
+Grable, J. E., & Lytton, R. H. (1999). Financial risk tolerance revisited. Financial Services Review, 8(3), 163-181. https://doi.org/10.1016/S1057-0810(99)00041-4
+LLM Sentiment Scoring for Next-Day Return Prediction. https://arxiv.org/abs/2412.19245
