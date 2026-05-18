@@ -20,25 +20,13 @@ from app.services.data_ingest import akshare_service
 from app.services.data_ingest.cninfo_service import cninfo_client
 
 
-def _mask(text: str, left: int = 8, right: int = 6) -> str:
-    value = str(text or "")
-    if len(value) <= left + right:
-        return "*" * len(value)
-    return f"{value[:left]}...{value[-right:]}"
-
-
-def parse_args() -> argparse.Namespace:
+def parse_args_2() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Test company_financials sync for one symbol and inspect DB write results."
     )
     parser.add_argument("--symbol", default="000001", help="A-share symbol, e.g. 000001")
     parser.add_argument("--limit", type=int, default=24, help="sync_company_financial limit parameter")
     parser.add_argument("--show-rows", type=int, default=12, help="print latest N rows from company_financials")
-    parser.add_argument(
-        "--truncate-symbol",
-        action="store_true",
-        help="delete existing company_financials rows for this symbol before sync",
-    )
     parser.add_argument(
         "--probe-cninfo",
         action="store_true",

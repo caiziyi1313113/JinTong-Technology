@@ -4,14 +4,6 @@ import sys
 from pathlib import Path
 from typing import Iterable, Set
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-def _parse_dataset_keys(text: str) -> Set[str]:
-    values: Iterable[str] = str(text or "").replace(";", ",").split(",")
-    return {item.strip().upper() for item in values if item and item.strip()}
-
 
 def main() -> None:
     args = parse_args()

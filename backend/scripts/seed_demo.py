@@ -31,7 +31,7 @@ MACRO_SNIPPETS = [
 
 if __name__ == "__main__":
     db = SessionLocal()
-    symbol = "AAPL"
+    symbol = "APL"
     stock = db.query(Stock).filter(Stock.symbol == symbol).first()
     if not stock:
         stock = Stock(symbol=symbol, name="Apple Inc.", market="NASDAQ", sector="Technology")
