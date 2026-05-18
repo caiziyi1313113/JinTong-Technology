@@ -8,56 +8,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Quick test: crawl Eastmoney F10 financial datasets and write cleaned rows into DB."
-    )
-    parser.add_argument("--symbol", default="002150", help="A-share symbol, e.g. 002150")
-    parser.add_argument("--limit", type=int, default=24, help="Max rows per dataset to keep")
-    parser.add_argument(
-        "--interval",
-        type=float,
-        default=0.35,
-        help="Request interval seconds between F10 datasets (default: 0.35)",
-    )
-    parser.add_argument("--show-rows", type=int, default=8, help="Show latest N stored eastmoney_f10 rows")
-    parser.add_argument(
-        "--assert-records",
-        action="store_true",
-        help="Exit with non-zero status when no Eastmoney records were fetched/written",
-    )
-    parser.add_argument(
-        "--datasets",
-        default="",
-        help="Optional dataset keys split by comma, e.g. GBALANCE,GINCOME,GCASHFLOW,GRATIO",
-    )
-    parser.add_argument(
-        "--max-report-dates",
-        type=int,
-        default=12,
-        help="Max report dates discovered for each dataset (dynamic, no hard-coded dates)",
-    )
-    parser.add_argument("--show-events", type=int, default=5, help="Show latest N stored eastmoney event rows")
-    return parser.parse_args()
-
-
-def _normalize_any_symbol(raw: str) -> str:
-    text = str(raw or "").strip().upper()
-    if not text:
-        return ""
-    if "." in text:
-        left, right = text.split(".", 1)
-        if left.isdigit() and right in {"SH", "SZ", "BJ"}:
-            return left.zfill(6)
-    if text.startswith(("SH", "SZ", "BJ")) and text[2:].isdigit():
-        return text[2:].zfill(6)
-    digits = "".join(ch for ch in text if ch.isdigit())
-    if len(digits) >= 6:
-        return digits[-6:]
-    return text
-
-
 def _parse_dataset_keys(text: str) -> Set[str]:
     values: Iterable[str] = str(text or "").replace(";", ",").split(",")
     return {item.strip().upper() for item in values if item and item.strip()}
