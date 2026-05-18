@@ -22,7 +22,7 @@ REQUIRED_FACTOR_NAMES = [
     "流动比率",
     "PE",
     "PB",
-    "PS",
+    "PD",
     "市值",
     "近5日成交量变化",
     "当日换手率",
@@ -46,14 +46,6 @@ def parse_args() -> argparse.Namespace:
         help="Exit non-zero when required factor names are missing in output",
     )
     return parser.parse_args()
-
-
-def _latest_price(latest_quote: Any, market_rows: list[Any]) -> float | None:
-    if latest_quote and latest_quote.latest_price is not None:
-        return float(latest_quote.latest_price)
-    if market_rows:
-        return float(market_rows[-1].close)
-    return None
 
 
 def main() -> None:
