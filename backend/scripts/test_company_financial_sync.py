@@ -20,7 +20,11 @@ from app.services.data_ingest import akshare_service
 from app.services.data_ingest.cninfo_service import cninfo_client
 
 
+<<<<<<< HEAD
 def parse_args_2() -> argparse.Namespace:
+=======
+def parse_args() -> argparse.Namespace:
+>>>>>>> C2
     parser = argparse.ArgumentParser(
         description="Test company_financials sync for one symbol and inspect DB write results."
     )
