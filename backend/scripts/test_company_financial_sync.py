@@ -20,13 +20,6 @@ from app.services.data_ingest import akshare_service
 from app.services.data_ingest.cninfo_service import cninfo_client
 
 
-def _mask(text: str, left: int = 8, right: int = 6) -> str:
-    value = str(text or "")
-    if len(value) <= left + right:
-        return "*" * len(value)
-    return f"{value[:left]}...{value[-right:]}"
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Test company_financials sync for one symbol and inspect DB write results."

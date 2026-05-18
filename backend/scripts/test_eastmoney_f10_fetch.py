@@ -9,7 +9,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args_1() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Quick test: crawl Eastmoney F10 financial datasets and write cleaned rows into DB."
     )
